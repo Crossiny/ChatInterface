@@ -19,7 +19,7 @@ namespace ChatInterface
         {
             get
             {
-                return tcpClient.Connected;
+                return tcpClient.Connected; // Dies wird nun geupdated
             }
         }
 
