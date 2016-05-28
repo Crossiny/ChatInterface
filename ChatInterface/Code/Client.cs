@@ -31,11 +31,6 @@ namespace ChatInterface
         /// <returns>Gibt an ob die Verbindung und der Login erfolgreich waren.</returns>
         public bool Connect(string Username, string Password)
         {
-            // dt = new DispatcherTimer();
-            // dt.Interval = new TimeSpan(0, 0, 0, 0, 250);
-            // dt.Tick += ReceiveMessages;
-            // dt.Start();
-
             tcpClient = new TcpClient("localhost", 1337);
             streamRW = new StreamRW(tcpClient.GetStream());
 
@@ -48,6 +43,7 @@ namespace ChatInterface
         {
             streamRW.WriteLine("Message:" + Message);
         }
+
         /// <summary>
         /// Beendet die Verbindung mit dem Server.
         /// </summary>

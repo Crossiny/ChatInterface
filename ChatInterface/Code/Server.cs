@@ -20,6 +20,7 @@ namespace ChatInterface
             TcpListener tcpListener = new TcpListener(IPAddress.Any, 1337); tcpListener.Start();
             Console.WriteLine("Listener started");
 
+            // Wartet permanent auf Anfragen von Clients.
             while (true)
             {
                 try

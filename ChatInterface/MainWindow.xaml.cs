@@ -26,7 +26,8 @@ namespace ChatInterface
             InitializeComponent();
             client = new Client();
         }
-
+        
+        // Überprüft ob eine Verbindung besteht, baut eine Verbindung auf und passt den Zustand des ToggelButtons entsprechend an.
         private void buttonToggleConnect_Click(object sender, RoutedEventArgs e)
         {
             if (buttonToggleConnect.IsChecked == true)
@@ -47,6 +48,7 @@ namespace ChatInterface
             }
         }
 
+        // Startet einen Task für den Server.
         private void buttonStartServer_Click(object sender, RoutedEventArgs e)
         {
             Task t = new Task(Server.startServer);
@@ -54,11 +56,13 @@ namespace ChatInterface
             Console.WriteLine(t.Id);
         }
 
+        // Sended eine Chatnachricht an den Server.
         private void buttonSend_Click(object sender, RoutedEventArgs e)
         {
             client.SendMessage(textBoxSend.Text);
         }
 
+        // Beendet den Server wenn das Fenster geschlossen wird.
         private void Window_Closed(object sender, EventArgs e)
         {
             Server.Stop();
