@@ -8,10 +8,9 @@ namespace ChatInterface
 {
     class Client
     {
-        DispatcherTimer dt;
         TcpClient tcpClient;
         StreamRW streamRW;
-
+        string username;
         /// <summary>
         /// Gibt zurück ob der Client mit dem Server verbunden ist.
         /// </summary>
@@ -32,16 +31,33 @@ namespace ChatInterface
         public bool Connect(string Username, string Password)
         {
             tcpClient = new TcpClient("localhost", 1337);
+
             streamRW = new StreamRW(tcpClient.GetStream());
-
-            streamRW.WriteLine(String.Format("{0}:{1}", Username, Password));
-
+            Message message = new Message()
+            {
+                content = new Command(CommandType.Login, Username, Password),
+                sender = Username,
+                sendTime = DateTime.Now
+            };
+            Send(message);
+            username = Username;
             return (streamRW.ReadLine() == "Login successfull") ? true : false;
         }
 
-        public void SendMessage(string Message)
+        public void SendMessage(string message)
         {
-            streamRW.WriteLine("Message:" + Message);
+            Message mes = new Message()
+            {
+                content = new Command(CommandType.Message, message),
+                sender = username,
+                sendTime = DateTime.Now
+            };
+            Send(mes);
+        }
+
+        public void Send(Message message)
+        {
+            streamRW.WriteLine(message.ToString());
         }
 
         /// <summary>
@@ -49,8 +65,14 @@ namespace ChatInterface
         /// </summary>
         public void Disconnect()
         {
-            streamRW.WriteLine("Disconnect:Logout");
+            Message message = new Message()
+            {
+                content = new Command(CommandType.Disconnect, "Quit"),
+                sender = username,
+                sendTime = DateTime.Now
+            };
+            Send(message);
             tcpClient.Close();
-        }        
+        }
     }
 }

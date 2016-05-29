@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
+using System.Xml;
 
 namespace ChatInterface
 {
     /// <summary>
     /// Kombinierter StreamReader und StreamWriter mit vereinfachter Funktionalität.
     /// </summary>
-    class StreamRW
+    public class StreamRW
     {
         StreamReader streamReader;
         StreamWriter streamWriter;
@@ -55,5 +57,116 @@ namespace ChatInterface
         {
             streamWriter.WriteLine(Value);
         }
+
+        public void Flush()
+        {
+            streamWriter.Flush();
+        }
+    }
+
+    public class Message
+    {
+        public Command content;
+
+        public string sender;
+
+        public DateTime sendTime;
+
+        public Message() { }
+        public Message(Command content, string sender, DateTime sendTime)
+        {
+            this.content = content;
+            this.sender = sender;
+            this.sendTime = sendTime;
+        }
+
+        public override string ToString()
+        {
+            return MessageSerializer.Serialize(this);
+        }
+    }
+
+    static class MessageSerializer
+    {
+        /// <summary>
+        /// Serialisiert das aktuelle Objekt und gibt das Ergebnis als String zurück.
+        /// </summary>
+        /// <returns></returns>
+        public static string Serialize(Message toSerialize)
+        {
+            string serializedObject;
+            if (toSerialize != null)
+            {
+                    // Erstellt einen StringWriter der später die Ausgabe des Objektes übernimmt.
+                    StringWriter stringWriter = new StringWriter();
+
+                    // Erstellt einen XMLWriter, der den XML-Code formatiert und Zeilenumbrüche entfernt,
+                    // und gibt den neuen Code an den StringWriter weiter.
+                    XmlWriter xmlWriter = XmlWriter.Create(stringWriter, new XmlWriterSettings()
+                    {
+                        Indent = false,
+                        NewLineHandling = NewLineHandling.None,
+                        NewLineOnAttributes = false
+                    });
+
+                    // Erstellt einen Serializer, der das Objekt serialisiert und an den XMLWriter übergibt, der sich um die Formatierung kümmert.
+                    XmlSerializer serializer = new XmlSerializer(typeof(Message));
+                    serializer.Serialize(xmlWriter, toSerialize);
+                    serializedObject = stringWriter.ToString();
+
+                    // Aufräumarbeiten.
+                    xmlWriter.Close();
+                    stringWriter.Close();
+
+                return serializedObject;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Deserialisiert ein Objekt welches übergeben wird und gibt das Objekt zurück.
+        /// </summary>
+        /// <param name="toDeserialize">Das Serialisiert Objekt als string.</param>
+        /// <returns></returns>
+        public static Message Deserialize(string toDeserialize)
+        {
+            Message deserializedObject;
+
+            try
+            {
+                // Erstellt einen StringReader, der das vom serializer deserialisierte Objekt enthält.
+                StringReader reader = new StringReader(toDeserialize);
+                XmlSerializer serializer = new XmlSerializer(typeof(Message));
+                deserializedObject = (Message)serializer.Deserialize(reader);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Fehler beim Deserialisieren von {0}...: {1}", toDeserialize, e.Message);
+                return null;
+            }
+
+            return deserializedObject;
+
+        }
+    }
+
+    public class Command
+    {
+        public CommandType type;
+        public string[] parameter;
+
+        public Command() { }
+        public Command(CommandType Command, params string[] Parameter)
+        {
+            parameter = Parameter;
+            type = Command;            
+        }
+    }
+
+    public enum CommandType
+    {
+        Login,
+        Message,
+        Disconnect
     }
 }

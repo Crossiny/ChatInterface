@@ -9,19 +9,20 @@ namespace ChatInterface
 {
     class Server
     {
-        static Dictionary<string, TcpClient> connectedUser;
-
+        static Dictionary<string, Thread> connectedUser;
+        static bool started;
         /// <summary>
         /// Startet den Listener der neue Verbindungen von Clients annimmt.
         /// </summary>
         public static void startServer()
         {
-            connectedUser = new Dictionary<string, TcpClient>();
+            started = true;
+            connectedUser = new Dictionary<string, Thread>();
             TcpListener tcpListener = new TcpListener(IPAddress.Any, 1337); tcpListener.Start();
-            Console.WriteLine("Listener started");
+            Console.WriteLine("[Server][{0}]: Listener started", DateTime.Now);
 
-            // Wartet permanent auf Anfragen von Clients.
-            while (true)
+            // Wartet auf Anfragen von Clients solange der Server gestartet ist.
+            while (started)
             {
                 try
                 {
@@ -29,9 +30,18 @@ namespace ChatInterface
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.InnerException);
+                    Console.WriteLine("[Server]" + e.InnerException);
                 }
             }
+            tcpListener.Stop();
+        }
+
+        /// <summary>
+        /// Stoppt den Server.
+        /// </summary>
+        public static void Stop()
+        {
+            started = false;
         }
 
         /// <summary>
@@ -40,28 +50,9 @@ namespace ChatInterface
         /// <param name="tcpClient">Der Client, der die Verbindung angefragt hat.</param>
         static void AcceptClient(TcpClient tcpClient)
         {
-            StreamRW streamRW = new StreamRW(tcpClient.GetStream());
-            string message = streamRW.ReadLine();
-            string username = message.Split(':')[0];
-            string password = message.Split(':')[1];
-
-            if (username == password)
-            {
-                streamRW.WriteLine("Login successfull");
-                connectedUser[username] = tcpClient;
-                Console.WriteLine("{0} logged in", username);
-
-                // Erstellt ein Objekt von Connection, das sich in einem neuen Thread 
-                // um sämtliche weiteren Nachrichten vom Client kümmert.
-                Connection c = new Connection(username, tcpClient);
+                Connection c = new Connection(tcpClient);
                 Thread t = new Thread(new ThreadStart(c.Start));
                 t.Start();
-            }
-            else
-            {
-                Console.WriteLine("{0} failed to login", username);
-                tcpClient.Close();
-            }
         }
     }
 
@@ -71,35 +62,23 @@ namespace ChatInterface
         StreamRW streamRW;
         string username;
 
-        /// <summary>
-        /// Konstruktor
-        /// </summary>
-        /// <param name="Username">Username mit dem sich der Client angemeldet hat.</param>
-        /// <param name="TcpClient">Der Client der die Verbindung darstellt.</param>
-        public Connection(string Username, TcpClient TcpClient)
+        public Connection(TcpClient TcpClient)
         {
             tcpClient = TcpClient;
             streamRW = new StreamRW(tcpClient.GetStream());
-            username = Username;
-            Console.WriteLine("Established connection for {0}", username);
         }
 
         /// <summary>
         /// Beginnt mit der Überwachung des Streams und läuft solange der TcpClient connected ist.
         /// </summary>
         public void Start()
-        {            
+        {
             while (tcpClient.Connected)
             {
                 string Message = streamRW.ReadLine();
-                if (Message != null)
+                if (Message != "")
                     ProcessMessage(Message);
             }
-        }
-
-        public static void Stop()
-        {
-
         }
 
         /// <summary>
@@ -107,21 +86,34 @@ namespace ChatInterface
         /// </summary>
         /// <param name="Message">Aufbau: Befehle:Parameter</param>
         /// <returns></returns>
-        bool ProcessMessage(string Message)
+        void ProcessMessage(string Content)
         {
-            string command = Message.Split(':')[0];
-            string param = Message.Remove(0, command.Length +1);
-
-            switch (command)
+            Message receivedMessage = MessageSerializer.Deserialize(Content);
+            Command command = (Command)receivedMessage.content;
+            switch (command.type)
             {
-                case "Message":
-                    Console.WriteLine("{0} said: {1}", username, param);
+                case CommandType.Login:
+                    StreamRW streamRW = new StreamRW(tcpClient.GetStream());
+                    if (command.parameter[0] == command.parameter[1])
+                    {
+                        streamRW.WriteLine("Login successfull");
+                        username = command.parameter[0];
+                        Console.WriteLine("[Server][{0}]{1} logged in",DateTime.Now, username);
+                    }
+                    else
+                    {
+                        streamRW.WriteLine("Login failed");
+                        Console.WriteLine("[Server][{0}{1}] failed to log in", DateTime.Now, username);
+                    }
+                        break;
+                case CommandType.Message:
+                    Console.WriteLine("[Server][{0}]{1}: {2}", receivedMessage.sendTime, receivedMessage.sender, command.parameter[0]);
                     break;
-                case "Disconnect":
-                    Console.WriteLine("{0} disconnected: {1}", username, param);
+                case CommandType.Disconnect:
+                    Console.WriteLine("[Server][{0}]{1}: Disconnected: {2}", receivedMessage.sendTime, receivedMessage.sender, command.parameter[0]);
                     break;
             }
-            return true;
+
         }
     }
 }

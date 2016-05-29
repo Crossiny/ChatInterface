@@ -32,6 +32,7 @@ namespace ChatInterface
         {
             if (buttonToggleConnect.IsChecked == true)
             {
+                // Sollte der Verbindungsaufbau und die Anmeldung erfolgreich sein, wechselt der Status auf connected, ansonsten bleibt er Disconnected.
                 if (client.Connect(textBoxUserName.Text, textBoxPassword.Text))
                 {
                     buttonToggleConnect.Content = "Connected";
